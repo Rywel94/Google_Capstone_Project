@@ -1,0 +1,426 @@
+---
+title: "Google Capstone Project - Cyclistic Case Study"
+author: "R Welsh"
+date: "2024-09-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Background 
+###  Scenario
+You are a junior data analyst working on the marketing analyst team at Cyclistic, a bike-share company in Chicago. The director of marketing believes the company’s future success depends on maximizing the number of annual memberships. Therefore,your team wants to understand how casual riders and annual members use Cyclistic bikes differently. From these insights, your team will design a new marketing strategy to convert casual riders into annual members. But first, Cyclistic executives must approve your recommendations, so they must be backed up with compeling data insights and professional data visualizations.
+
+### The Stakeholders and Teams
+Cyclistic: A bike-share program that features more than 5,800 bicycles and 600
+docking stations. Cyclistic sets itself apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with disabilities and riders who can’t use a standard two-wheeled bike. The majority of riders opt for traditional bikes; about 8% of riders use the assistive options. Cyclistic users are more likely to ride for leisure, but about 30% use the bikes to commute to work each day.
+
+Lily Moreno: The director of marketing and your manager. Moreno is responsible for the development of campaigns and initiatives to promote the bike-share program.These may include email, social media, and other channels.
+
+Cyclistic marketing analytics team: A team of data analysts who are responsible for collecting, analyzing, and reporting data that helps guide Cyclistic marketing strategy. You joined this team six months ago and have been busy learning about Cyclistic’s mission and business goals— aswell as how you, as a junior data analyst, can help Cyclistic achieve them.
+
+
+Cyclistic executive team: The notoriously detail-oriented executive team will decide whether to approve the recommended marketing program.
+
+### Company Overview
+In 2016, Cyclistic launched a successful bike-share ordering service. Since then, the program has grown to a fleet of 5,824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime.
+
+Until now, Cyclistic’s marketing strategy relied on building general awareness and appealing to broad consumer segments. One approach that helped make these things possible was the exibility of its pricing plans: single-ride passes, full-day passes, and annual memberships. Customers who purchase single-ride or full-day passes are referred to as casual riders.Customers who purchase annual memberships are Cyclistic members. Cyclistic’s analysts have concluded that annual members are much more profitable than casual riders. Although the pricing exibility helps Cyclistic attract more customers, Moreno believes that maximizing the number of annual members will be key to future growth. Rather than creating a marketing campaign that targets new customers, Moreno believes
+there is a solid opportunity to convert casual riders into members. She notes that casual riders are already aware of the Cyclistic program and have chosen Cyclistic for their mobility needs. 
+
+Moreno has set a clear goal: Design marketing strategies aimed at converting casual riders into annual members. In order to do that, however, the team needs to better understand how annual members and casual riders differ, why casual riders would buy a membership, and how digital media could affect their marketing tactics. Moreno and her team are interested in analyzing the Cyclistic historical bike trip data to identify trends.
+
+## My Role 
+Moreno has assigned me to see how annual members and casual members differ in their use of the service.
+
+## How will I do this
+First thing I will need to do is get a dataset that will be used to help my derive analysis to therfore make a report on my findings.  
+
+## Gathering the datasets required for my analyis 
+As Cyclistic is a "mock" company there is no first party data so I gathered the datasets required for this project from this link <https://divvy-tripdata.s3.amazonaws.com/index.html>. This data has been made available from Motivate International Inc Under the license <https://divvybikes.com/data-license-agreement> The datasets I have selected are (2019 Q1 - 2020 Q1) as these two datasets cover the same months therefore I am able to make a better correlation based on the average use i.e certain months later in the quarter may have a higher average due to better weather conditions. This will also give a better indication to the marketing team if they were to advertise in a specific period Q1 what type of indicators they will need to target.
+
+## Preparing and Cleaning the data
+After downloading and unzipping the datasets required I opened each spreadsheet in Excel and checked for duplicated values among the data, No duplicated values were found therefore the remove duplicates function didn't need to be used. 
+
+"I made sure the datasets had the same headers and values this meant changing the header  "usertype" from the 2019 Q1 sheet to "member_causal" and also the values "subscriber" to "Annual" and "customer" to "Casual". I then deleted columns that weren't across both sheets of data and that I would be unable to validate so the Gender and Birthday columns from 2019 Q1 were removed. 
+
+### Start of the analysis
+
+I then went through both of the datasets and decided to find the mean, the mode, the max and the min of the rides. 
+
+#### 2020 Q1 issue 
+During this process I found 210 records that had either 0 min or negative minute rides, this could be due to the tracking on these rides however there is a correlation that all these rides started at station 675. As I have no viable way to correct this data as this is a 3rd party data source I decided to remove these values. 
+
+### Next Steps 
+
+I then added a weekday function in order to view the day the rides were made as this could be a way to differentiate how the types of user use the service. I then added a mode function to see what day was the most common.
+
+### Individual Sheet Analysis
+
+I then made pivot tables and visualisations for each Q1 dataset to find and showcase the difference between Annual and Casual users. The 3 metrics I wanted to view was average ride length between the two members, the average ride length by day and the amount of use per member per day. 
+
+The spreadsheets are able to be viewed on my portfolio
+
+#### Using R to Merge and Produce further analysis
+
+First thing to do when opening R is to open the packages I will need to provide analysis on the data
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(skimr)
+library(flexdashboard)
+```
+
+
+```{r}
+library(tinytex)
+```
+
+To show the analysis I had to import the data I first had to change my working directory in R to where the Spreadsheets were held
+
+```{r} 
+setwd("C:/Documents/Google Capstone Project/Cyclistic Case Study")
+```
+
+Then I imported my clean datasets
+
+``` {r}
+Divvy_Trips_2019_Q1 <- read_excel("Divvy_Trips_2019_Q1.xlsx", sheet = "Divvy_Trips_2019_Q1")
+```
+
+``` {r}
+Divvy_Trips_2020_Q1 <- read_excel("Divvy_Trips_2020_Q1.xlsx", sheet = "Divvy_Trips_2020_Q1")
+```
+
+I did have Issues with the code took a while to eventually work importing these datasets, My current thinking process is that this may be as I had changed my default directory. another way to import the datasets manually is by
+
+1. Using the more file commands dropdown
+2. Go to Working Directory
+3. Click on the Two files and import
+
+### Next Steps
+
+View the 2 datasets to see if they've imported correctly 
+
+``` {r}
+View(Divvy_Trips_2019_Q1)
+```
+
+``` {r}
+View(Divvy_Trips_2020_Q1)
+```
+
+check the column names of the two datasets 
+
+``` {r}
+colnames(Divvy_Trips_2019_Q1)
+```
+
+```{r}
+colnames(Divvy_Trips_2020_Q1)
+```
+
+Then the head of both documents
+
+```{r}
+head(Divvy_Trips_2019_Q1)
+```
+
+```{r}
+head(Divvy_Trips_2020_Q1)
+```
+
+As you can see I still need to amend and delete some column names in order to make both sheets workable when I merge them together.
+
+### Sorting the Datasets
+
+First thing was renaming the columns in the 2019 Q1 Dataset so that they matched with the 2020 dataset
+
+```{r}
+(Divvy_Trips_2019_Q1 <- rename(Divvy_Trips_2019_Q1
+                   ,ride_id = trip_id
+                   ,rideable_type = bikeid
+                   ,started_at = start_time
+                   ,ended_at = end_time
+                   ,start_station_name = from_station_name
+                   ,start_station_id = from_station_id
+                   ,end_station_name = to_station_name
+                   ,end_station_id = to_station_id
+                   ))
+```
+As you can see this is now much more easier when I will be further analysing the data.
+
+Next I will be converting the data from the 2019 Q1 dataset so that it matches the same datatype so it will stack correctly when merged 
+
+```{r}
+Divvy_Trips_2019_Q1 <-  mutate(Divvy_Trips_2019_Q1, ride_id = as.character(ride_id)
+                   ,rideable_type = as.character(rideable_type)) 
+```
+
+Now it is time to merge the two datasets together into a new dataframe
+
+```{r}
+all_trips <- bind_rows(Divvy_Trips_2019_Q1, Divvy_Trips_2020_Q1)
+```
+
+This has now created a new dataset called all_trips which I will view 
+
+```{r}
+View(all_trips)
+```
+
+check the columns are correct
+
+```{r}
+colnames(all_trips)
+```
+
+And check the rows and columns have stacked correctly 
+
+```{r}
+head(all_trips)
+```
+
+As you can see some columns are only reference in the Q1 2019 dataset therefore I will need to clean this new dataframe before beginning analysis. 
+
+#### Removing Columns I will not need 
+
+```{r}
+all_trips <- all_trips %>%  
+  select(-c(start_lat, start_lng, end_lat, end_lng, `Day of week`, Max_ride_length, Mode_ride_length, ride_length, Min_ride_length, Mean_ride_length, `Mode_Weekday`, `Mode Weekday`, "tripduration"))
+```
+
+### Time to Inspect my New Dataframe
+
+Now it's time to inspect my new Dataframe.
+
+```{r}
+View(all_trips)
+```
+
+```{r}
+colnames(all_trips)  #List of column names
+```
+
+```{r}
+nrow(all_trips)  #How many rows are in data frame?
+```
+
+```{r}
+dim(all_trips)  #Dimensions of the data frame?
+```
+
+```{r}
+head(all_trips)  #See the first 6 rows of data frame.
+```
+
+```{r}
+tail(all_trips)
+```
+
+```{r}
+str(all_trips)  #See list of columns and data types (numeric, character, etc)
+```
+
+```{r}
+summary(all_trips)  #Statistical summary of data. Mainly for numerics
+```
+## Further Actions 
+
+I need to reintroduce the columns I had for the individual spreadsheets i.e Weekday, Ride Length, as well as create new columns i.e Day, Month, Year so that I am able to further aggregate the data.
+
+### Adding the Date,Month,Year,Day to each ride
+
+The reason I want to add this to the Dataframe is in order to be able to gain more opportunities to aggragate the data.
+
+```{r}
+all_trips$date <- as.Date(all_trips$started_at) #The default format is yyyy-mm-dd
+```
+
+```{r}
+all_trips$month <- format(as.Date(all_trips$date), "%m") # Month
+```
+
+```{r}
+all_trips$day <- format(as.Date(all_trips$date), "%d") # Day
+```
+
+```{r}
+all_trips$year <- format(as.Date(all_trips$date), "%Y") # Year
+```
+
+```{r}
+all_trips$day_of_week <- format(as.Date(all_trips$date), "%A") # Day of Week
+```
+
+Now my Dataframe looks like this,
+
+```{r}
+head(all_trips)
+```
+
+
+### Adding the Ride Length (in Seconds)
+```{r}
+all_trips$ride_length <- difftime(all_trips$ended_at,all_trips$started_at)
+```
+
+Then I will inspect the structure of the column
+
+```{r}
+str(all_trips)
+```
+
+I need to make sure the column for ride_length isn't in factor form, I need this to be numeric if I wish to make calculations such as mean,median, mode later on. 
+
+```{r}
+all_trips$ride_length <- as.numeric(as.character(all_trips$ride_length))
+is.numeric(all_trips$ride_length)
+```
+
+### Removing Bad Data
+
+As I had previously learned with station 675 a lot of these results were either negative or had 0 min rides, only by viewing this dataframe after the processes above I was able to easily clarify that this is a HQ Quality control centre where bikes are undocked for a brief period but not ridden. (updated individual spreadsheet after this to reflect correctly)
+
+```{r}
+all_trips_v2 <- all_trips[!(all_trips$start_station_name == "HQ QR" | all_trips$ride_length<0),] # This will remove all 675 Stations and any rides that are under 0 seconds
+```
+
+## Time to Anaylse the Data
+
+Descriptive analysis on ride_length (all figures in seconds)
+
+
+```{r}
+summary(all_trips_v2) #Overall Summary of the data
+```
+
+```{r}
+mean(all_trips_v2$ride_length) # Mean of the ride length
+```
+
+```{r} 
+total_ride_length <- sum(all_trips_v2$ride_length, na.rm = TRUE) 
+
+number_of_rides <- nrow(all_trips_v2) 
+
+average_ride_length <- total_ride_length / number_of_rides
+
+print(average_ride_length) # This chuck of code will get the Average ride length
+```
+
+```{r}
+median(all_trips_v2$ride_length) # Median ride length
+```
+
+```{r}
+max(all_trips_v2$ride_length) # Longest ride
+```
+
+```{r}
+min(all_trips_v2$ride_length) # Shortest ride
+```
+
+## Time to compare Members and Casuals
+
+Now it's time to see the difference using these metrics between the two userbases
+
+```{r}
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = mean) # The mean between the two userbases
+```
+
+```{r}
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = median)
+# The Median between the two userbases
+```
+
+```{r}
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = max)
+# The longest ride between the two userbases
+```
+
+```{r}
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual, FUN = min)
+# The shortest ride between the two userbases
+```
+
+```{r}
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual + all_trips_v2$day_of_week, FUN = mean) # The Average ride time by day by each userbase
+```
+
+The days of the week are out of order making this data harder to understand I need to write the below code to fix this issues
+
+```{r}
+all_trips_v2$day_of_week <- ordered(all_trips_v2$day_of_week, levels=c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+```
+
+Now I will try to find the average ride time by userbase on a daily basis
+```{r}
+aggregate(all_trips_v2$ride_length ~ all_trips_v2$member_casual + all_trips_v2$day_of_week, FUN = mean)
+```
+
+This looks much clearer to read and understand. 
+
+### Lets Analyse the Userbase by Weekday
+
+```{r}
+all_trips_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>%  #creates weekday field using wday()
+  group_by(member_casual, weekday) %>%  #groups by usertype and weekday
+  summarise(number_of_rides = n()							#calculates the number of rides and average duration 
+            ,average_duration = mean(ride_length)) %>% 		# calculates the average duration
+  arrange(member_casual, weekday)	# sorts the data 
+```
+
+## Time to Visualise this 
+
+### The Below Graph shows the number of ride by userbase
+
+```{r}
+all_trips_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = number_of_rides, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+### The Below graph shows the average duration by userbase
+```{r}
+all_trips_v2 %>% 
+  mutate(weekday = wday(started_at, label = TRUE)) %>% 
+  group_by(member_casual, weekday) %>% 
+  summarise(number_of_rides = n()
+            ,average_duration = mean(ride_length)) %>% 
+  arrange(member_casual, weekday)  %>% 
+  ggplot(aes(x = weekday, y = average_duration, fill = member_casual)) +
+  geom_col(position = "dodge")
+```
+
+
+
+## Summary
+
+The two Graphs currently displayed show the despite the Annual Users using the service more regulary with there highest uptake being in the working week, despite this the duration of the trips is on average lower than a casual user during this time. 
+
+This is most likely due to the trips took by annual members are commutes to work or to events. 
+
+The casual users don't use the service through the week but there is an uptake of rides on weekends, overall the rides a casual user does is longer than a Annual rider. this is most likely less frequent but long bike rides on a weekend when they are off work. 
+
+### Suggestions Based on this
+
+For an Weekend only annual membership. this may have get casual users who only use the service on a weekend to be more inclined to a subscription model.
+
+Monthly or Bi Monthly passes with a set number of hours linked to the pass i.e 1 Month 35 Hours, 2 Months 80 Hours. This may get causal users who will use the service for long durations of time on a weekend to pay upfront but not have the fear of being in an annual subscription model initially. this may In turn make them use the service during the week which may make them reconsider an annual subscription. 
+
+Increased marketing towards the idea of using the service for short regular journeys i.e going to nearby social events / commuting to work.  
+
+### Further Visualisation / Analysis 
+I am going to create a CSV file with this dataframe that I then perform more visualisations using tableau <https://public.tableau.com/app/profile/ryan.welsh6016/vizzes>
+
