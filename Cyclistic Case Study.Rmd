@@ -44,7 +44,7 @@ As Cyclistic is a "mock" company there is no first party data so I gathered the 
 ## Preparing and Cleaning the data
 After downloading and unzipping the datasets required I opened each spreadsheet in Excel and checked for duplicated values among the data, No duplicated values were found therefore the remove duplicates function didn't need to be used. 
 
-"I made sure the datasets had the same headers and values this meant changing the header  "usertype" from the 2019 Q1 sheet to "member_causal" and also the values "subscriber" to "Annual" and "customer" to "Casual". I then deleted columns that weren't across both sheets of data and that I would be unable to validate so the Gender and Birthday columns from 2019 Q1 were removed. 
+I made sure the datasets had the same headers and values this meant changing the header  "usertype" from the 2019 Q1 sheet to "member_causal" and also the values "subscriber" to "Annual" and "customer" to "Casual". I then deleted columns that weren't across both sheets of data and that I would be unable to validate so the Gender and Birthday columns from 2019 Q1 were removed. 
 
 ### Start of the analysis
 
