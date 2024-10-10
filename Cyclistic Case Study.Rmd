@@ -61,7 +61,7 @@ I then added a weekday function in order to view the day the rides were made as 
 
 I then made pivot tables and visualisations for each Q1 dataset to find and showcase the difference between Annual and Casual users. The 3 metrics I wanted to view was average ride length between the two members, the average ride length by day and the amount of use per member per day. 
 
-The spreadsheets are able to be viewed on my portfolio
+The spreadsheets will be able to be viewed on my portfolio
 
 #### Using R to Merge and Produce further analysis
 
@@ -407,7 +407,7 @@ all_trips_v2 %>%
 
 ## Summary
 
-The two Graphs currently displayed show the despite the Annual Users using the service more regulary with there highest uptake being in the working week, despite this the duration of the trips is on average lower than a casual user during this time. 
+The two Graphs currently displayed show the despite the Annual Users using the service more regularly with there highest uptake being in the working week, despite this the duration of the trips is on average lower than a casual user during this time. 
 
 This is most likely due to the trips took by annual members are commutes to work or to events. 
 
