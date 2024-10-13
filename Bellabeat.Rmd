@@ -1,0 +1,359 @@
+---
+title: "Google Capstone Project - Bellabeat Case Study"
+author: "R Welsh"
+date: "2024-10-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## The Background
+### Scenerio 
+I am a junior data analyst working on the marketing analyst team at Bellabeat, a high-tech manufacturer of health-focused products for women.Bellabeat is a successful small company, but they have the potential to become a larger player in the global smart device market. Urška Sršen, cofounder and Chief Creative Officer of Bellabeat, believes that analyzing smart device fitness data could help unlock new growth oppotunities for the company. You have been asked to focus on one of Bellabeat’s products and analyze smart device data to gain insight into how consumers are using their smart devices. The insights you discover will then help guide marketing strategy for the company. You will present your analysis to the Bellabeat executive team along with your high-level recommendations for Bellabeat’s marketing strategy.
+ 
+### Characters and Products
+Characters
+
+* UrškaSršen: Bellabeat’s cofounder and Chief Creative Officer
+* SandoMur: Mathematician and Bellabeat’s cofounder; key member of the Bellabeat executive team
+* Bellabeat marketing analytics team: A team of data analysts responsible for collecting, analyzing, and reporting data that helps guide Bellabeat’s marketing strategy. You joined this team six months ago and have been busy learning about Bellabeat’s mission and business goals — as well as how you, as a junior data analyst, can help Bellabeat achieve them.
+ 
+Products
+
+* Bellabeat app: The Bellabeat app provides users with health data related to their activity, sleep, stress, menstrual cycle, and mindfulness habits. This data can help users be er understand their current habits and make healthy decisions. The Bellabeat app connects to their line of smart wellness products.
+* Leaf: Bellabeat’s classic wellness tracker can be worn as a bracelet, necklace, or clip. The Leaf tracker connects to the Bellabeat app to track activity, sleep, and stress.
+* Time: This wellness watch combines the timeless look of a classic timepiece with smart technology to track user activity, sleep, and stress. The Time watch connects to the Bellabeat app to provide you with insights into your daily wellness.
+* Spring: This is a water bottle that tracks daily water intake using smart technology to ensure that you are appropriately hydrated throughout the day. The Spring bottle connects to the Bellabeat app to track your hydration levels.
+* Bellabeat membership: Bellabeat also offers a subscription-based membership program for users. Membership gives users 24/7 access to fully personalized guidance on nutrition, activity, sleep, health and beauty, and mindfulness based on their lifestyle and goals.
+ 
+### About the company
+Urška Sršen and Sando Mur founded Bellabeat, a high-tech company that manufactures health-focused smart products.Sršen used her background as an a artist to develop beautifully designed technology that informs and inspires women around the world. Collecting data on activity, sleep, stress, and reproductive health has allowed Bellabeat to empower women with knowledge about their own health and habits. Since it was founded in 2013, Bellabeat has grown rapidly and quickly positioned itself as a tech-driven wellness company for women. By 2016, Bellabeat had opened offices around the world and launched multiple products. Bellabeat products became available through a growing number of online retailers in addition to their own e-commerce channel on their [website](https://bellabeat.com/) The company has invested in traditional advertising media, such as radio, out-of-home billboards, print, and television, but focuses on digital marketing extensively. Bellabeat invests year-round in Google Search, maintaining active Facebook and Instagram pages, and consistently engages consumers on Twitter. Additionally, Bellabeat runs video ads on Youtube and display ads on the Google Display Network to support campaigns around key marketing dates. Sršen knows that an analysis of Bellabeat’s available consumer data would reveal more oppo unities for growth. She has asked the marketing analytics team to focus on a Bellabeat product and analyze smart device usage data in order to gain insight into how people are already using their sma devices. Then, using this information, she would like high-level recommendations for how these trends can inform Bellabeat marketing strategy.
+
+### My Task
+Sršen wants me to analyze smart device usage data in order to gain insight into how consumers use non-Bellabeat smart devices. She then wants me to select one Bellabeat product to apply these insights to which I will then have to produce a report on. 
+
+The 3 Main Questions I will be focusing on are; 
+
+ 1. What are some trends in smart device usage?
+ 2. How could these trends apply to Bellabeat customers?
+ 3. How could these trends help in uence Bellabeat marketing strategy?
+ 
+## The Data
+
+Sršen encourages you to use public data that explores smart device users’ daily habits. She points you to a specific data set:
+
+● FitBit Fitness Tracker Data (CC0: Public Domain, dataset made available through Mobius): This Kaggle data set contains personal fitness tracking from thirty fitbit users. Thirty eligible Fitbit users consented to the submission of
+personal tracker data, including minute-level output for physical activity, heartrate, and sleep monitoring. It includes information about daily activity, steps, and heartrate that can be used to explore users’ habits.
+ 
+Sršen tells you that this data set might have some limitations, and encourages you to consider adding another dataset to help address those limitations as you begin to work more with this data.
+
+## Using R to Merge and Produce further analysis
+
+First thing to do when opening R is to open the packages I will need to provide analysis on the data
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(skimr)
+library(flexdashboard)
+```
+
+```{r}
+library(tinytex)
+```
+
+
+## Preparing the Data
+
+I downloaded the dataset from Kaggle and stored it to my local network, The dataset spans over a 2 month period of March 2016 to May 2016 with 30 users. This is quite concerning as the data is quite outdated and the sample size of 30 is a small representative sample to base a well rounded analysis from.  
+
+### Time to Import the data
+
+```{r}
+dailyActivity_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/dailyActivity_merged.csv")
+
+heartrate_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/heartrate_seconds_merged.csv")
+
+hourlycal_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/hourlyCalories_merged.csv")
+
+hoursintensity_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/hourlyIntensities_merged.csv")
+
+steps_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/hourlySteps_merged.csv")
+
+mincal_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/minuteCaloriesNarrow_merged.csv")
+
+minintensity_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/minuteIntensitiesNarrow_merged.csv")
+
+minmet_3_4_ <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/minuteMETsNarrow_merged.csv")
+
+minsleep_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/minuteSleep_merged.csv")
+
+minsteps_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/minuteStepsNarrow_merged.csv")
+
+weight_3_4 <- read_csv("mturkfitbit_export_3.12.16-4.11.16/Fitabase Data 3.12.16-4.11.16/weightLogInfo_merged.csv")
+
+dailyActivity_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/dailyActivity_merged.csv")
+
+heartrate_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/heartrate_seconds_merged.csv")
+
+hourlycal_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/hourlyCalories_merged.csv")
+
+hoursintensity_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/hourlyIntensities_merged.csv")
+
+steps_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/hourlySteps_merged.csv")
+
+mincal_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/minuteCaloriesNarrow_merged.csv")
+
+minintensity_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/minuteIntensitiesNarrow_merged.csv")
+
+minmet_4_5_ <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/minuteMETsNarrow_merged.csv")
+
+minsleep_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/minuteSleep_merged.csv")
+
+minsteps_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/minuteStepsNarrow_merged.csv")
+
+weight_4_5 <- read_csv("mturkfitbit_export_4.12.16-5.12.16/Fitabase Data 4.12.16-5.12.16/weightLogInfo_merged.csv")
+```
+
+Now that I have imported the data I need to merge the March data with it's corresponding April data i.e weight_3_4 with weight_4_5
+
+```{r}
+dailyactivity <- rbind(dailyActivity_3_4,dailyActivity_4_5)
+
+heartrate <- rbind(heartrate_3_4,heartrate_4_5)
+
+hourlycal <- rbind(hourlycal_3_4,hourlycal_4_5)
+
+hoursintensity <- rbind(hoursintensity_3_4,hoursintensity_4_5)
+
+mincal <- rbind(mincal_3_4,mincal_4_5)
+
+minintensity <- rbind(minintensity_3_4,minintensity_4_5)
+
+minmet <- rbind(minmet_3_4_,minmet_4_5_)
+
+minsleep <- rbind(minsleep_3_4,minsleep_4_5)
+
+minsteps <- rbind(minsteps_3_4,minsteps_4_5)
+
+steps <-rbind(steps_3_4,steps_4_5)
+
+weight <- rbind(weight_3_4,weight_4_5)
+```
+
+Now I can look at each individual dataframe and decide whether to draw analysis from them individually or potentially use combinations. 
+
+
+## Explore a few key tables 
+
+
+Take a look at the daily activity data.
+```{r}
+head(dailyactivity)
+```
+
+Identify all the columns in the daily activity data.
+```{r}
+colnames(dailyactivity)
+```
+
+Take a look at the weight data.
+```{r}
+head(weight)
+```
+Identify all the columns in the weight data.
+```{r}
+colnames(weight)
+```
+
+Note that both datasets have the 'Id' field - this can be used to merge the datasets.
+
+
+### Understanding some summary statistics 
+
+
+How many unique participants are there in each dataframe? It looks like there may be more participants in the daily activity dataset than the weight dataset.
+
+```{r}
+n_distinct(dailyactivity$Id)
+n_distinct(weight$Id)
+```
+
+How many observations are there in each dataframe?
+```{R}
+nrow(dailyactivity)
+nrow(weight)
+```
+
+### What are some quick summary statistics we'd want to know about each data frame?
+  
+For the daily activity dataframe:
+```{r}
+dailyactivity %>%  
+  select(TotalSteps,
+         TotalDistance,
+         SedentaryMinutes) %>%
+  summary()
+```
+
+For the weight dataframe:
+```{r}
+weight %>%  
+  select(WeightKg,WeightPounds,Fat,BMI) %>%
+  summary()
+```
+## Plotting a few explorations ##
+
+
+#### What's the relationship between steps taken in a day and sedentary minutes? 
+
+```{r}
+ggplot(data=dailyactivity, aes(x=TotalSteps, y=SedentaryMinutes)) + geom_point()
+```
+
+
+
+#### What's the relationship between weight in KG and BMI? 
+
+```{r}
+ggplot(data=weight, aes(x=WeightKg, y=BMI)) + geom_point()
+```
+
+##### What can we take from these two charts
+
+The first chart shows that the more sedentary minutes accumalated the less steps are taken. 
+
+The Second chart shows a slight linear relationship between the amount a person weighs and thier BMI. 
+
+These two trends could mean you want to try and promote being less sedentary as this will increase steps which could overall decrease weight which would decrease BMI. 
+
+## Merging the two datasets together
+
+I need to merge the two datasets together but I don't want just the values that match, therefore I need to make sure I perform an outer join when merging 
+
+```{r}
+combined_data <- full_join(dailyactivity,weight, by="Id")
+```
+
+Let's take a look at how many participants are in this data set to make sure this has worked correctly.
+
+```{r}
+n_distinct(combined_data$Id)
+```
+As you can see this is the same amount that was in the previous daily activity dataframe therefore meaning that the outer join has only matched the ID's that are the same. 
+
+I can also view the table to make sure 
+
+```{r}
+view(combined_data)
+```
+
+## Time for Futher analysis 
+
+Now I have my combined data I want to draw a couple of visualations between the relationship between aspects of usage of the device
+
+## First we will make the various activity types be grouped 
+```{r}
+combined_data_long <- combined_data %>%
+  pivot_longer(cols = c(VeryActiveDistance, ModeratelyActiveDistance, LightActiveDistance, SedentaryActiveDistance),
+               names_to = "ActivityType",
+               values_to = "Distance")
+```
+
+## Then we will find the percentage of the different activity types 
+
+
+### Percentage of Activity Types Logged
+```{r}
+combined_data_long %>%
+  group_by(ActivityType) %>%
+  summarise(Count = n()) %>%
+  mutate(Percentage = (Count / sum(Count)) * 100) %>%
+  ggplot(aes(x = ActivityType, y = Percentage, fill = ActivityType)) +
+  geom_col() +
+  labs(x = "Activity Type", y = "Percentage", fill = "Activity Type")
+```
+
+As you can see this is an even spread of 25% for each type of Distance activity
+
+
+### Percentage of Total Distance by Activity Type
+```{r}
+combined_data_long <- combined_data %>%
+  pivot_longer(cols = c(VeryActiveDistance, ModeratelyActiveDistance, LightActiveDistance, SedentaryActiveDistance),
+               names_to = "ActivityType",
+               values_to = "Distance")
+
+combined_data_long %>%
+  group_by(ActivityType) %>%
+  summarise(TotalDistance = sum(Distance, na.rm = TRUE)) %>%
+  mutate(Percentage = (TotalDistance / sum(TotalDistance)) * 100) %>%
+  ggplot(aes(x = "", y = Percentage, fill = ActivityType)) + 
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  labs(x = "", y = "", fill = "Activity Type", title = "Percentage of Total Distance by Activity Type")
+
+
+```
+
+This chart is showing that a greater percentage of distance is covered during light active distance activties. This is most likely users doing less intense excercise such as walking.
+
+
+## Now we will group the minutes types together 
+```{R}
+combined_data_long <- combined_data %>%
+  pivot_longer(cols = c(VeryActiveMinutes ,FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes),
+               names_to = "ActivityType",
+               values_to = "TotalMinutes")
+
+
+
+```
+
+
+### Total Minutes by Activity Type
+```{r}
+combined_data_long <- combined_data %>%
+  pivot_longer(cols = c(FairlyActiveMinutes, LightlyActiveMinutes, SedentaryMinutes, VeryActiveMinutes),
+               names_to = "ActivityType",
+               values_to = "Minutes")
+
+combined_data_long %>%
+  group_by(ActivityType) %>%
+  summarise(TotalMinutes = sum(Minutes, na.rm = TRUE)) %>%
+  ggplot(aes(x = ActivityType, y = TotalMinutes, fill = ActivityType)) +
+  geom_col(position = "dodge") +
+  labs(x = "Activity Type", y = "Total Minutes", fill = "Activity Type", title = "Total Minutes by Activity Type")
+
+```
+
+This shows the most common minute type selected is Sedentary followed by Lightly. This means people are mostly either not moving or doing less intense excerise such as walking
+
+```{r}
+combined_data_long %>%
+  group_by(ActivityType) %>%
+  summarise(TotalMinutes = sum(Minutes, na.rm = TRUE)) %>%
+  mutate(Percentage = (TotalMinutes / sum(TotalMinutes)) * 100) %>%
+  ggplot(aes(x = "", y = Percentage, fill = ActivityType)) +
+  geom_bar(width = 1, stat = "identity") +
+  coord_polar("y", start = 0) +
+  labs(x = "", y = "", fill = "Activity Type", title = "Percentage of Total Minutes by Activity Type")
+```
+
+
+The Pie chart emphasises the previous point as a Percentage over 75% of minutes logged being Sedentray
+
+## Summary
+
+From the data usage it seems that the majority of users spend the majority of their time Sedentary as they will be at work or asleep, with the next highest activity being light activity as this is the next highest percentage logged aswell as the most distance covered under this type of activity. This is most likely low intense excercise such as walking. 
+
+## Recommendations 
+
+Market this product not as a ultra fitness product but as a everyday wellness wearable item that has features such as a heartrate monitor, sleep tracker and step counter.  
+
+Have social media and marketing promotions involving less intensive exercises such as hiking, walking as this is the most prominent type of activity associated with this device. 
+
+As we have gathered from the findings that the majority of usage is either Sedentary or Light. Bellabeat's target demographic is women and they already have necklaces, earrings, bracelet's as part of their range. It may be more benefical to further market these items as these line of products aren't as prevenlent among the other health-focused-tracker companies. therefore this could be an opportunity to gain control of this market.  
