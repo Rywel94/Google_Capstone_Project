@@ -148,7 +148,7 @@ sum(movies$adult, na.rm = TRUE)
 
 ```
 
-I've found out that their is only 9 True values presnt in the adult column, this information will not give us anything significant, so that column is also dropped.
+I've found out that their is only 9 True values present in the adult column, this information will not give us anything significant, so that column is also dropped.
 
 ```{r}
 # Count the occurrences of each unique value in the 'adult' column
@@ -513,7 +513,7 @@ list_counter <- function(col, limiter = 9999, log = TRUE) {
 
 ```
 
-Now to count the occurrences within each genre within the data.
+#### Now to count the occurrences within each genre within the data.
 
 ```{r}
 
@@ -544,7 +544,7 @@ ggplot(genre_occur, aes(x = reorder(genres, n), y = n)) +
 ```
 
 
-Now to see the top 20 Production Countries occurrences in the data. 
+#### Now to see the top 20 Production Countries occurrences in the data. 
 
 ```{r}
 # Separating the columns that contain combined Countries
