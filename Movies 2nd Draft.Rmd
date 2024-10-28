@@ -1,0 +1,1421 @@
+---
+title: "Google Capstone Project - Movies Dataset Analysis"
+author: "R Welsh"
+date: "2024-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+link to the dataset used: <https://www.kaggle.com/rounakbanik/the-movies-dataset>
+
+Inspiration for the Data Cleaning and Transformation part of this markdown: Movies Data Analysis by BarisBatuhan <https://www.kaggle.com/code/barisbatuhan/movies-dataset-data-cleaning-and-analysis> 
+
+# Contents:
+- Objective of the Analysis
+- Importing Libraries
+- Importing the Dataset
+- Data Cleaning and Formatting
+- Brief Data Analysis on Overall Data
+- Analysis on Business Objective 
+- Conclusion, Recommendation and Next Steps
+
+
+# Business Objective Scenrio
+I am a Junior Analyst who has been approached by a Film Investment Agency who wish to Invest a considerable amount into a film project in the near future, The Investment Agency has no bias towards a specific type of film or director they want to invest in they just want the best possible chance of return on their investment. The Investment Agency believes that analyzing previous film data could help them make a decision on their Investment. The insights I  discover will then help guide the Investment strategy for the Agency. I will present my analysis along with my high-level recommendations back to the Investment Agency.
+
+# Importing Libraries I will need
+-  *Tidyverse* - for holding dataset and processing,list operations, graphics and data analysis. 
+- *Janitor* - for its Data Cleaning functions
+- *Tinytex* - to make this markdown a PDF / Word document 
+- *Skimr* - for data manipulation 
+- *Reshape2* - for data visualisation purposes
+- *Jsonlite* - if I need to clean up data from JSON strings
+- *Corrplot* - in order to plot numerical correlations of data in graphs 
+- *Viridis*  - to make visualisation clear and easy to read
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(skimr)
+library(tinytex)
+library(reshape2)
+library(jsonlite)
+library(corrplot)
+library(viridis)
+```
+
+# Importing the Data
+
+```{r}
+# reads the csv metadata and prints the head
+
+movies <- read.csv("movies_metadata.csv")
+
+view(movies) # is print function but for purposes of markdown is view
+```
+
+# Data Cleaning and Formatting
+
+## - Movies Metadata Dataset
+
+```{r}
+head(movies)
+```
+
+###  Columns to be Dropped
+- *original_title*: since title column is also included and original_title column has non-ASCII characters, it can be dropped.
+- *homepage*: there will be no analysis depending on the homepage of the movie, this column is uselesss for this specific analysis
+- *imdb_id*: both ratings.csv and keywords.csv has id column to match with metadata dataset, thus no need for this column.
+- *overview & tagline*: no text analysis will be made in this notebook. For retrieving the most important words, keywords.csv can be used
+- *video & poster_path*: no image, video related processing will be made
+- *spoken_languages*: original_language is included, no need for this column.
+
+```{r}
+movies <- movies %>%  
+  select(-c(homepage, poster_path, video, imdb_id, overview, original_title, spoken_languages, tagline))
+
+movies <- movies[!duplicated(movies), ]
+
+movies <- movies[complete.cases(movies), ]
+
+```
+
+Time to get some info on this altered dataset
+
+```{r}
+# To get the dimensions of your dataframe
+dim(movies)
+
+# To get the structure of your dataframe
+str(movies)
+```
+
+I want to see if any rows have the film title missing
+
+```{r}
+# checking the title column for NA/Nulls
+missing_titles <- movies[is.na(movies$title), ]
+
+# Display the rows with missing titles
+print(missing_titles)
+```
+
+This comes back clear so I am good to go continuing my reformatting of the dataset, the string types of *id*, *popularity* and *budget* is *chr*, although they contain data that should be represented as numeric. This could cause errors with invalid parsing where results will be returned as Na. Also converting *release_date* to datetime instead of *chr* and extracting the year data will be helpful with future analysis.
+
+```{r}
+# Drop rows where 'title' is missing (already know this is 0 but run just as a precaution)
+movies <- movies[!is.na(movies$title), ]
+
+# Convert 'id' column to numeric
+movies$id <- as.integer(movies$id)
+
+# Convert 'popularity' column to numeric
+movies$popularity <- as.numeric(movies$popularity)
+
+# Convert 'budget' column to numeric
+movies$budget <- as.numeric(movies$budget)
+
+# Convert 'release_date' column to Date
+movies$release_date <- as.Date(movies$release_date, format = "%Y-%m-%d")
+
+# Extract the year from 'release_date' into 'release_year'
+movies$release_year <- format(movies$release_date, "%Y")
+```
+
+As we can see from the dataset itself and the previous *str* function, *belongs_to_collection* column has too many null entries, therefore instead of giving the collection name, we can convert the data to 0 and 1, 0 for not belonging and 1 for belonging.
+
+```{r}
+# Replace NA values in 'belongs_to_collection' with "None"
+movies$belongs_to_collection[is.na(movies$belongs_to_collection)] <- "None"
+
+# Convert 'belongs_to_collection' to binary: 1 if it's not "None", otherwise 0
+movies$belongs_to_collection <- ifelse(movies$belongs_to_collection != "None", 1, 0)
+```
+
+From the previous *str* function and looking at the dataset their seems to be mostly false entered in the adult column. I want to find how many true values thier is to see if this column will be useful for further analysis
+
+```{r}
+
+# Convert 'adult' column to logical so I can run the query (TRUE/FALSE)
+movies$adult <- as.logical(movies$adult)
+
+# Now, count the number of TRUE values in the 'adult' column
+sum(movies$adult, na.rm = TRUE)
+
+```
+
+I've found out that their is only 9 True values presnt in the adult column, this information will not give us anything significant, so that column is also dropped.
+
+```{r}
+# Count the occurrences of each unique value in the 'adult' column
+table(movies$adult)
+```
+
+```{r}
+# Removing the adult column
+movies <- movies[, !names(movies) %in% "adult"]
+```
+
+```{r}
+# Viewing the dataset structure after this change
+str(movies)
+```
+
+I've noticed a few blank and null's in the *status* column, it may be a good idea to fill these with most common data. For *runtime*, again a similar case occurs and it can be handled by filling NaN values with the mean.
+
+```{r}
+# Fill NA values in 'status' with the most common value
+movies$status[is.na(movies$status)] <- names(sort(table(movies$status), decreasing = TRUE))[1]
+
+# Replace 0 with NA in 'runtime'
+movies$runtime[movies$runtime == 0] <- NA
+
+# Fill NA values in 'runtime' with the mean
+movies$runtime[is.na(movies$runtime)] <- mean(movies$runtime, na.rm = TRUE)
+```
+
+Now to check if their is any nulls in the *release_date* and *original_language* column's
+
+```{r}
+# Find rows where 'release_date' or 'original_language' is missing
+missing_data <- movies[is.na(movies$release_date) | is.na(movies$original_language), ]
+
+view(missing_data)
+```
+
+This has returned 73 values, as I can only assume the original language and have no way of entering an exact correct release date I will remove these rows. 
+
+
+```{r}
+# Drop rows where 'release_date' is missing
+movies <- movies[!is.na(movies$release_date), ]
+
+# Drop rows where 'original_language' is missing
+movies <- movies[!is.na(movies$original_language), ]
+```
+
+Some of my columns such as *genres*, *production_companies* and *production_countries* are *chr* strings. For easier processing and in order to perform any required list-based operations, these have to be converted into a list of inputs. The function below achieves this:
+
+```{r}
+# Convert character strings in specified columns to lists of inputs
+convert_to_list <- function(column) {
+  lapply(column, function(x) {
+    if (!is.na(x) && x != "") {
+      strsplit(x, ", ")[[1]]
+    } else {
+      NA
+    }
+  })
+}
+
+# Apply the function to each column
+movies$genres <- convert_to_list(movies$genres)
+movies$production_companies <- convert_to_list(movies$production_companies)
+movies$production_countries <- convert_to_list(movies$production_countries)
+
+# Check the structure of the new columns to verify
+str(movies$genres)
+str(movies$production_companies)
+str(movies$production_countries)
+
+```
+
+
+Now I want to clean up the columns so only one parameter from the lists of each of these columns Is shown and referenced In order to make the analysis of data is clean and easy to read. 
+
+```{r}
+
+# Function to parse and extract country names from JSON within a list
+extract_countries <- function(list_element) {
+  if (length(list_element) == 0 || all(is.na(list_element))) return(NA_character_)
+  
+  json_string <- paste0("[", paste(list_element, collapse = ", "), "]")
+  json_string <- gsub("'", '"', json_string)
+  
+  parsed_data <- tryCatch({
+    fromJSON(json_string)
+  }, error = function(e) {
+    return(NA_character_)
+  })
+  
+  if (is.null(parsed_data)) return(NA_character_)
+  
+  country_names <- sapply(parsed_data, function(x) {
+    if (is.list(x) && !is.null(x$name)) {
+      return(x$name)
+    } else {
+      return(NA_character_)
+    }
+  })
+  
+  country_names <- country_names[!is.na(country_names)]
+  return(paste(country_names, collapse = "; "))
+}
+
+
+
+```
+
+```{r}
+# Apply the function to the production_countries column
+movies$production_countries <- vapply(movies$production_countries, extract_countries, character(1))
+
+# Verify the cleaned production_countries column
+print(head(movies$production_countries))
+
+```
+
+```{r}
+
+# Function to parse and extract Production Company names from JSON within a list
+extract_companies <- function(list_element) {
+  if (length(list_element) == 0 || all(is.na(list_element))) return(NA_character_)
+  
+  json_string <- paste0("[", paste(list_element, collapse = ", "), "]")
+  json_string <- gsub("'", '"', json_string)
+  
+  parsed_data <- tryCatch({
+    fromJSON(json_string)
+  }, error = function(e) {
+    return(NA_character_)
+  })
+  
+  if (is.null(parsed_data)) return(NA_character_)
+  
+  company_names <- sapply(parsed_data, function(x) {
+    if (is.list(x) && !is.null(x$name)) {
+      return(x$name)
+    } else {
+      return(NA_character_)
+    }
+  })
+  
+  company_names <- company_names[!is.na(company_names)]
+  return(paste(company_names, collapse = "; "))
+}
+
+```
+
+```{r}
+# Apply the function to the production_companies column
+movies$production_companies <- vapply(movies$production_companies, extract_companies, character(1))
+
+# Verify the cleaned production_countries column
+print(head(movies$production_companies))
+```
+
+```{r}
+
+# Function to parse and extract Genre names from JSON within a list
+extract_genres <- function(list_element) {
+  if (length(list_element) == 0 || all(is.na(list_element))) return(NA_character_)
+  
+  json_string <- paste0("[", paste(list_element, collapse = ", "), "]")
+  json_string <- gsub("'", '"', json_string)
+  
+  parsed_data <- tryCatch({
+    fromJSON(json_string)
+  }, error = function(e) {
+    return(NA_character_)
+  })
+  
+  if (is.null(parsed_data)) return(NA_character_)
+  
+  genre_names <- sapply(parsed_data, function(x) {
+    if (is.list(x) && !is.null(x$name)) {
+      return(x$name)
+    } else {
+      return(NA_character_)
+    }
+  })
+  
+  genre_names <- genre_names[!is.na(genre_names)]
+  return(paste(genre_names, collapse = "; "))
+}
+
+```
+
+
+```{r}
+# Apply the function to the production_countries column
+movies$genres <- vapply(movies$genres, extract_genres, character(1))
+
+# Verify the cleaned production_countries column
+print(head(movies$genres))
+```
+
+#### Now I can move onto the columns that have numeric values
+```{r}
+# First lets Remove Scientific Notation from my data
+options(scipen=999)
+```
+
+I want to clean up the budget and revenue columns so that the value of 0 is replaced by N/A as it is unfeasible that the amount of these values is 0
+
+```{r}
+# Replace 0 with NA in 'budget' and 'revenue'
+movies$budget[movies$budget == 0] <- NA
+movies$revenue[movies$revenue == 0] <- NA
+```
+
+
+Now time to categorise the budget values into groups 
+
+```{r}
+# Number of rows with budget < 100
+rows_less_than_100 <- nrow(movies[!is.na(movies$budget) & movies$budget < 100, ])
+
+# Number of rows with budget > 100 and < 1000
+rows_between_100_and_1000 <- nrow(movies[!is.na(movies$budget) & movies$budget > 100 & movies$budget < 1000, ])
+
+# Number of rows with budget > 1000 and < 10000
+rows_between_1000_and_10000 <- nrow(movies[!is.na(movies$budget) & movies$budget > 1000 & movies$budget < 10000, ])
+
+# Print the results
+cat("Number of rows with budget < 100: ", rows_less_than_100, "\n")
+cat("Number of rows with budget > 100 and < 1000: ", rows_between_100_and_1000, "\n")
+cat("Number of rows with budget > 1000 and < 10000: ", rows_between_1000_and_10000, "\n")
+```
+
+There are some rows that have a budget and revenue value that are not correctly scaled. i.e:
+- id: 17402
+- Title: Miami Rhapsody
+- Production Company: Hollywood Pictures	
+- Date: 1995-01-27	
+- Budget: 6
+- Revenue: 5 (by looking IMDB, actual revenue can be seen as around 5 million)
+
+Because of this issue and after checking some of the notebooks shared from other Analysts, I have decided to adopt the scaling function they have For example, if the value is 1, then it scales to 1 million.
+
+```{r}
+# Creating the Function
+scale_money <- function(num) {
+  if (is.na(num)) {
+    return(NA)
+  } else if (num < 100) {
+    return(num * 1000000)
+  } else if (num >= 100 & num < 1000) {
+    return(num * 10000)
+  } else if (num >= 1000 & num < 10000) {
+    return(num * 100)
+  } else {
+    return(num)
+  }
+}
+
+# Applying the function to 'budget' and 'revenue' columns
+movies$budget <- sapply(movies$budget, scale_money)
+movies$revenue <- sapply(movies$revenue, scale_money)
+
+```
+
+After these steps, the columns can be osberved to see how many null or NaN entries there are. So, a heatmap of missing/Null data is below:
+
+```{r}
+
+# Create a matrix of missing values
+missing_vals <- is.na(movies) + 0  # Convert logical to numeric
+
+# Melt the matrix to long format for ggplot
+melted_missing_vals <- melt(missing_vals)
+
+# Plot the heatmap
+ggplot(data = melted_missing_vals, aes(x = Var2, y = Var1, fill = value)) + 
+  geom_tile() + 
+  scale_fill_viridis_c(option = "viridis") +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        axis.title = element_blank(), 
+        legend.position = "none")
+
+```
+
+Looking at the two columns we've been altering, *budget* and *revenue* the majority of values in these columns now seem to have usable data (Yellow) with the (Purple) NA/Nulls not being as prevalent in these two columns. 
+
+I should note not to take the Purple in the other columns as these having NA/Null data as the heatmap is only showing numerical data therefore other columns such as title which is charecther based will show as null despite having data. 
+
+to provide further clairty for this I will run counts for NA/Null values for specified columns 
+
+```{r}
+# Count NaN values in specified columns
+nan_genres_count <- sum(is.na(movies$genres))
+nan_revenue_count <- sum(is.na(movies$revenue))
+nan_budget_count <- sum(is.na(movies$budget))
+nan_production_company_count <- sum(is.na(movies$production_companies))
+nan_production_country_count <- sum(is.na(movies$production_countries))
+
+# Print the results
+cat("NaN Genres Count: ", nan_genres_count, "\n")
+cat("NaN Revenue Count: ", nan_revenue_count, "\n")
+cat("NaN Budget Count: ", nan_budget_count, "\n")
+cat("NaN Production Company Count: ", nan_production_company_count, "\n")
+cat("NaN Production Country Count: ", nan_production_country_count, "\n")
+```
+
+For *revenue*, *budget* and *production company* filling the values with the most appearing entry or mean is not so logical, since the number of null or NaN entries are huge (More than 20% of whole dataset). But for *genres* and *country* it can be done. The function below analyzes the most occuring values for columns in list formats.
+
+```{r}
+list_counter <- function(col, limiter = 9999, log = TRUE) {
+  result <- list()
+  
+  for (cell in col) {
+    if (is.na(cell[1])) {
+      next
+    }
+    for (element in cell) {
+      if (!is.null(result[[element]])) {
+        result[[element]] <- result[[element]] + 1
+      } else {
+        result[[element]] <- 1
+      }
+    }
+  }
+  
+  if (log) {
+    cat("Size of words:", length(result), "\n")
+  }
+  
+  result <- result[order(unlist(result), decreasing = TRUE)]
+  
+  if (log) {
+    cat("Sorted result is:\n")
+  }
+  
+  counter <- 1
+  sum_selected <- 0
+  total_selected <- 0
+  returned <- list()
+  for (i in names(result)) {
+    if (counter > limiter) {
+      total_selected <- total_selected + result[[i]]
+    } else {
+      counter <- counter + 1
+      sum_selected <- sum_selected + result[[i]]
+      total_selected <- total_selected + result[[i]]
+      if (log) {
+        cat(result[[i]], " - ", i, "\n")
+      }
+      returned <- c(returned, list(c(i, result[[i]])))
+    }
+  }
+  
+  if (log) {
+    cat("Covered:", sum_selected, "out of", total_selected, "\n")
+  }
+  
+  return(returned)
+}
+
+```
+
+Now to count the occurrences within each genre within the data.
+
+```{r}
+
+# Seperating the columns that contain combined genres
+genres_separated <- movies %>%
+  separate_rows(genres, sep = "; ")
+
+# Verify the result
+print(head(genres_separated))
+
+
+# Count the occurrences of each genre
+genre_occur <- genres_separated %>%
+  count(genres, sort = TRUE)
+
+# Print the genre counts
+print(genre_occur)
+
+
+# Plot the counts of each genre
+ggplot(genre_occur, aes(x = reorder(genres, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Count of Movies by Genre",
+       x = "Genres",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+Now to see the top 20 Production Countries occurrences in the data. 
+
+```{r}
+# Separating the columns that contain combined Countries
+countries_separated <- movies %>%
+  separate_rows(production_countries, sep = "; ")
+
+# Verify the result
+print(head(countries_separated))
+
+
+# Count the occurrences of each Country
+countries_occur <- countries_separated %>%
+  count(production_countries, sort = TRUE)
+
+# Print the Country counts
+print(countries_occur)
+
+# filtering to the top 20
+top_20_countries <- countries_occur %>%
+  top_n(20, n) %>%
+  arrange(desc(n))
+
+
+
+# Plot the counts the Top 20 Countries
+ggplot(top_20_countries, aes(x = reorder(production_countries, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Count of Movies by Country (Top 20)",
+       x = "Country",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+In *genres* *Drama* is the most occurring with 20189 results and in *production_countries* *US* is the most frequent. These can be placed into NA cells of these columns:
+
+```{r}
+fill_na_with_list <- function(cell, data) {
+  if (is.na(cell)) {
+    return(data)
+  } else {
+    return(cell)
+  }
+}
+
+```
+
+```{r}
+fill_na_with_list <- function(cell, data) {
+  if (anyNA(cell)) {
+    return(data)
+  } else {
+    return(cell)
+  }
+}
+
+# 'genres_occur' and 'countries_occur' are already defined and processed through previous steps
+
+# Fill NA values in genres column
+movies$genres <- lapply(movies$genres, function(row) {
+  fill_na_with_list(row, list(genres_occur[[1]][[1]]))
+})
+
+# Fill NA values in production_countries column
+movies$production_countries <- lapply(movies$production_countries, function(row) {
+  fill_na_with_list(row, list(countries_occur[[1]][[1]]))
+})
+
+# Check the filled columns
+head(movies$genres)
+head(movies$production_countries)
+
+```
+
+### Time to revist my dataset after all this alteration
+
+```{r}
+# To get the dimensions of the dataframe
+dim(movies)
+
+# To get the structure of the dataframe
+str(movies)
+```
+
+I want to add a profit column to my dataset as a new value to aid analysis 
+
+```{r}
+# Create a new column 'profit'
+movies$profit <- movies$revenue - movies$budget
+
+```
+
+
+#### Now it's time to get an overall summary of our data
+
+```{r}
+# Get descriptive statistics for specific columns
+summary(movies[, c("popularity", "revenue", "budget", "runtime", "vote_average", "profit", "release_year")])
+```
+
+Since the difference between min and max values for *budget*, *revenue* and *profit* is quite large, I will normalise these. In order to preserve the signs of the parameters, the formula will be applied as: - value / (max - min)
+
+```{r}
+# Calculate the min and max values of the 'budget' column
+min_val <- min(movies$budget, na.rm = TRUE)
+max_val <- max(movies$budget, na.rm = TRUE)
+
+# Normalize 'budget', 'revenue', and 'profit' columns
+movies[, c("budget", "revenue", "profit")] <- lapply(movies[, c("budget", "revenue", "profit")], function(x) {
+  x / (max_val - min_val)
+})
+
+# Check the updated dataframe
+head(movies[, c("budget", "revenue", "profit")])
+```
+
+I now need to arrange *vote_counts* and *vote_averages* with a weighted manner. since there are lots of 0s in the dataset in both columns. The weighted process is implemented below and explained as:
+- Weighted Rating for a row (WR) = [(v + 1) / (v + m) * R] + [m / (m + v) * C]
+- v: number of votes for the movie
+- m: minimum votes required to be listed in the chart (quantile 0.75)
+- R: average rating of the movie 
+- C: mean vote across the whole report
+
+```{r}
+# Filter vote counts and vote averages
+vote_counts <- as.integer(movies$vote_count[!is.na(movies$vote_count)])
+vote_averages <- as.integer(movies$vote_average[!is.na(movies$vote_average)])
+
+# Calculate C and m
+C <- mean(vote_averages)
+m <- quantile(vote_counts, 0.75)
+
+# Define the weighted rating function
+weighted_rating <- function(data) {
+  v <- data$vote_count + 1  # added +1
+  R <- data$vote_average
+  return ((v / (v + m) * R) + (m / (m + v) * C))
+}
+
+# Apply the function to the dataframe
+movies$weighted_rating <- apply(movies, 1, weighted_rating)
+
+# Check the new column
+head(movies$weighted_rating)
+```
+
+## - Keywords Dataset
+
+First to import the keywords csv file and look at the columns of the data to see the format:
+
+```{r}
+keywords <- read.csv("keywords.csv")
+
+head(keywords)
+```
+
+As with the *movies* dataset the *keywords* format includes a column of data in chr string which I will want to convert to simple list. I can do this using the previous function written in the movies dataset and any problematic values can be adjusted:
+
+```{r}
+# Apply the convert_to_list function to the 'keywords' column
+keywords$keywords <- convert_to_list(keywords$keywords)
+
+# Check the structure of the new 'keywords' column
+str(keywords$keywords)
+```
+
+As I did with the *genres* *Production_Companies* and *Production_Countries* with the *Movies* Dataset I want to make the keywords column only reference the actual keyword(s) In order to make the analysis of data is clean and easy to read. 
+
+```{r}
+# Function to parse and extract country names from JSON within a list
+extract_keywords <- function(list_element) {
+  if (length(list_element) == 0 || all(is.na(list_element))) return(NA_character_)
+  
+  json_string <- paste0("[", paste(list_element, collapse = ", "), "]")
+  json_string <- gsub("'", '"', json_string)
+  
+  parsed_data <- tryCatch({
+    fromJSON(json_string)
+  }, error = function(e) {
+    return(NA_character_)
+  })
+  
+  if (is.null(parsed_data)) return(NA_character_)
+  
+  keyword_text <- sapply(parsed_data, function(x) {
+    if (is.list(x) && !is.null(x$name)) {
+      return(x$name)
+    } else {
+      return(NA_character_)
+    }
+  })
+  
+  keyword_text <- keyword_text[!is.na(keyword_text)]
+  return(paste(keyword_text, collapse = "; "))
+}
+
+```
+
+```{r}
+# Apply the function to the production_countries column
+keywords$keywords <- vapply(keywords$keywords, extract_keywords, character(1))
+
+# Verify the cleaned production_countries column
+print(head(keywords$keywords))
+```
+
+
+Now to remove any rows with NA values from the keywords dataframe. 
+
+```{r}
+# Drop rows with NA values in the dataframe
+keywords <- na.omit(keywords)
+
+# Verify the changes
+head(keywords)
+```
+
+Now to see the top 20 occurances in the Keywords Dataset.
+
+```{r}
+
+# Separating the columns that contain combined Keywords
+keywords_separated <- keywords %>%
+  separate_rows(keywords, sep = "; ")
+
+
+keywords_separated <- keywords_separated %>%
+  filter(keywords != "" & !is.na(keywords))
+
+# Verify the result
+print(head(keywords_separated))
+
+
+# Count the occurrences of each Keyword
+keywords_occur <- keywords_separated %>%
+  count(keywords, sort = TRUE)
+
+# Print the Keyword counts
+print(keywords_occur)
+
+
+# filtering to the top 20
+top_20_keywords <- keywords_occur %>%
+  top_n(20, n) %>%
+  arrange(desc(n))
+
+
+# Plot the counts of the Top 20 Keywords
+ggplot(top_20_keywords, aes(x = reorder(keywords, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Count of Keyword (Top 20)",
+       x = "Keyword",
+       y = "Count") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+
+```
+
+As you can see Women's Director is the Most Used Keyword among the data.
+
+ 
+##### Since the *id* column is in in both the movies and keywords datasets and they represent the same movie, the datasets can be merged.
+
+```{r}
+# Merge Movies and Keywords on the 'id' column using a left join
+merged_df <- merge(movies, keywords, by = "id", all.x = TRUE)
+
+# Check the structure and head of the merged dataframe
+str(merged_df)
+head(merged_df)
+```
+
+## - Credits Dataset
+
+### First to import the Credits csv file and look at the columns of the data to see the format:
+
+```{r}
+credits <- read.csv("credits.csv")
+
+head(credits)
+```
+
+*cast* and *crew* like the two previous datasets has *chr* strings that I want to make into a list so I will use my function
+
+#### First lets start with the *cast*
+
+```{r}
+# Apply the convert_to_list function to the 'credits' column
+credits$cast <- convert_to_list(credits$cast)
+
+# Check the structure of the new 'credits' column
+str(credits$cast)
+```
+
+#### Now I want to get the director from the *crew*, I will do this in 3 steps.
+
+1. I need to parse the crew data so that the JSON string for each row are now seperated by individual parameters  
+
+
+```{r}
+# Function to parse the character string and convert to list
+parse_crew <- function(cast_text) {
+  text <- sub("\\£\\$\\£", "", gsub("\'|\"|\\[|\\]|\\{|\\}|,", "", gsub("\'credit_id\':|\'department\':|\'gender\':|\'id\':|\'job\':|\'name\':|\'profile_path\':", "£$£", cast_text)))
+  data <- data.frame(matrix(trimws(unlist(strsplit(text, "\\£\\$\\£"))), ncol = 7, byrow = TRUE), stringsAsFactors = FALSE)
+  names(data) <- c("credit_id", "department", "gender", "id", "job", "name", "profile_path")
+  return(data)
+}
+
+# Apply the parsing function to the 'crew' column and inspect parsed data
+credits$parsed_crew <- lapply(credits$crew, parse_crew)
+
+# Check if any parsed data is problematic
+parsed_lengths <- sapply(credits$parsed_crew, nrow)
+problematic_indices <- which(parsed_lengths == 0 | is.na(parsed_lengths))
+print(problematic_indices)
+
+```
+
+2. I need to make sure that the parsed data has transferred over into each parameter in a consistent manner, i.e name from the parse has went to name in the dataframe
+
+
+```{r}
+# Function to ensure consistency in parsed data frames
+ensure_consistency <- function(parsed_data) {
+  if (is.data.frame(parsed_data) && nrow(parsed_data) > 0) {
+    return(parsed_data)
+  } else {
+    return(data.frame(matrix(NA, ncol = 7, dimnames = list(NULL, c("credit_id", "department", "gender", "id", "job", "name", "profile_path")))))
+  }
+}
+
+# Apply consistency check
+credits$parsed_crew <- lapply(credits$parsed_crew, ensure_consistency)
+```
+
+
+3. Now I need to create and implement a function that will extract the Director from the parsed data while also replacing the crew column in the credits dataframe with a new column only displaying the director of the film 
+
+```{r}
+# Function to extract the director's name
+extract_director_name <- function(parsed_data) {
+  if (is.null(parsed_data)) return(NA)
+  for (row in 1:nrow(parsed_data)) {
+    if (!is.null(parsed_data$job[row]) && !is.na(parsed_data$job[row]) && parsed_data$job[row] == "Director") {
+      return(parsed_data$name[row])
+    }
+  }
+  return(NA)
+}
+
+# Apply the extraction function to the parsed data
+credits$director <- sapply(credits$parsed_crew, extract_director_name)
+
+# Drop the 'crew' and 'parsed_crew' columns
+credits <- credits[, !names(credits) %in% c("crew", "parsed_crew")]
+
+# Check the structure of the dataframe
+str(credits)
+```
+
+#### If there are cells both missing cast and director columns, they should be dropped:
+
+```{r}
+# Print the number of entries with no cast
+print(paste("Entries with no cast:", sum(is.na(credits$cast))))
+
+# Print the number of entries with no directors
+print(paste("Entries with no directors:", sum(is.na(credits$director))))
+
+# Print the number of entries missing both cast and directors
+print(paste("Entries missing both:", sum(is.na(credits$cast) & is.na(credits$director))))
+
+# Drop rows with both cast and directors missing
+credits <- credits[!(is.na(credits$cast) & is.na(credits$director)), ]
+
+# Check the structure of the dataframe after dropping rows
+str(credits)
+```
+#### In this instance there is 0 rows that needed to be dropped now I am ready to merge this dataset into my main dataset. 
+
+### The *id* of the merged dataset which consists of the movies and keywords and *id* of credits columns point to the same movies, this means I can merge the credits dataset into the main dataset with this information.
+
+
+```{r}
+# I will do this merge with a left join making the credits joining the merged datset I made earlier to make my final dataset for my analysis. 
+final_movies_data <- merge(merged_df, credits, by = "id", all.x = TRUE)
+```
+
+#### A brief overview of the main dataframe is below
+
+```{r}
+dim(final_movies_data)
+str(final_movies_data)
+```
+
+```{r}
+head(final_movies_data)
+```
+
+
+# Intial Data Anaylsis on Dataset
+
+## First of all, let's list top 10 movies regarding *weighted_rating*, *popularity* and *profit*
+
+```{r}
+# Creating new table named top_rated_movies that will show the top 10 based on weighted rating in Descending order  
+top_rated_movies <- final_movies_data %>%
+  arrange(desc(weighted_rating)) %>%
+  select(title, director, genres, profit, popularity, weighted_rating) %>%
+  head(10)
+
+print(top_rated_movies)
+```
+
+```{r}
+
+# Creating new table named top_popular_movies that will show the top 10 based on popularity in Descending order 
+top_popular_movies <- final_movies_data %>%
+  arrange(desc(popularity)) %>%
+  select(title, director, genres, profit, popularity, weighted_rating) %>%
+  head(10)
+
+print(top_popular_movies)
+```
+
+```{r}
+
+# Creating new table named top_profitable_movies that will show the top 10 based on profit in Descending order 
+
+
+top_profitable_movies <- final_movies_data %>%
+  arrange(desc(profit)) %>%
+  select(title, director, genres, profit, popularity, weighted_rating) %>%
+  head(10)
+
+print(top_profitable_movies)
+```
+
+
+### These can now be used for further visulisations later on in my analysis either in R or with a BI tool
+
+## Numerical Analysis on the data
+
+### Time to view and draw potential correlations within columns from my data
+
+#### Creating a correlation matrix
+
+```{r}
+
+# Dropping the 'id' column to make sure this doesn't skew the result of the correlation 
+movies_no_id <- final_movies_data %>% select(-id)
+
+# create a table that contains only numeric columns
+final_movies_numeric <- movies_no_id %>% select(where(is.numeric))
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(final_movies_numeric, use = "complete.obs")
+
+# View the correlation matrix
+print(correlation_matrix)
+```
+
+
+From viewing the correlation matrix I have noticed that the NA/Null values have also transferred over this will cause complications as these values won't be recognised as a numerical value so I will have to change this.
+
+
+```{r}
+# Replace NA/NaN values with 0 in the correlation matrix
+correlation_matrix[is.na(correlation_matrix)] <- 0
+correlation_matrix[is.nan(correlation_matrix)] <- 0
+
+# Confirm the updated correlation matrix
+print(correlation_matrix)
+```
+
+
+#### Drawing visualisation from the matrix
+
+```{r}
+# Visualize using corrplot and viridis 
+corrplot(correlation_matrix, method = "color", col = viridis(200), 
+         type = "upper", order = "hclust", 
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 45, # Text label color and rotation
+         diag = FALSE # Hide the diagonal
+)
+```
+
+##### Conclusions from the graph
+
+As we can see, there is a strong correlation (value > 0.7) between these parameters:
+- 0.73, budget and revenue
+- 0.78, vote_count and revenue
+- 0.75, profit and vote_count
+- 0.98, profit and revenue
+
+What can we draw from this?
+
+The more *revenue* a movie has, the more *profit* the movie will have and this result is expected. However, other conclusions can be reached, too:
+- If a movie has a higher *budget*, it is excpected to also have higher *revenue*.
+- The more *number of votes* a movie has, the more *revenue* and therefore *profit* the movie has. 
+
+This seems logical, because the amount of votes also indicates the *popularity* of a movie and popular ones tend to have more *revenue*. However, the relationship between *popularity* and *vote_count* or *profit / revenue* is not so strong. This result is a surprise. However, we can still say that there is a moderate correlation between:
+- 0.46, popularity and revenue
+- 0.56, popularity and vote_count
+- 0.44, popularity and profit
+- 0.61, budget and vote_count
+
+The most surprising result was having almost no correlation between *vote_average* and any other parameter except *weighted_rating*. Because it seems logical that higher voted movies tends to have more popularity and revenue, but this is not the case. On the other hand, after some processing of *vote_average* in order to create *weighted_rating*, some moderate correlations between *weighted_rating* and other parameters are seen:
+- 0.41, popularity and weighted_rating
+- 0.42, vote_count and weighted_rating
+- 0.30, profit and weighted_rating
+
+### It's time to draw comparisons from some of these corralated parameters from my main dataset
+
+#### Vote Count vs Profit
+
+```{r}
+# Creating a Scatter Graph of vote count and profit 
+
+g <- ggplot(final_movies_data, aes(x = vote_count, y = profit)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Vote Count vs Profit",
+       x = "Vote Count",
+       y = "Profit") +
+  theme_minimal()
+
+# Print the plot
+print(g)
+
+```
+
+#### Budget vs Revenue
+
+```{r}
+
+
+# Creating the scatter plot for budget vs. revenue
+g <- ggplot(final_movies_data, aes(x = budget, y = revenue)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Budget vs Revenue",
+       x = "Budget",
+       y = "Revenue") +
+  theme_minimal()
+
+# Print the plot
+print(g)
+```
+
+#### Vote Count vs Popularity
+
+```{r}
+
+
+# Creating the scatter plot for vote count vs. popularity
+
+g <- ggplot(final_movies_data, aes(x = vote_count, y = popularity)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Vote Count vs Popularity",
+       x = "Vote Count",
+       y = "Popularity") +
+  theme_minimal()
+
+# Print the plot
+print(g)
+
+```
+
+#### Popularity vs Weighted Rating
+
+```{r}
+g <- ggplot(final_movies_data, aes(x = popularity, y = weighted_rating)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Popularity vs Weighted Rating",
+       x = "Popularity",
+       y = "Weighted Rating") +
+  theme_minimal()
+
+# Print the plot
+print(g)
+```
+
+##### After the analysis of the numerical data,It's now time to look at the specific data to answer my Business Objective
+
+## Performance of the Last 5 years
+
+I've decided to only look at data from the 2016-2020 period as this is the most recent in the dataset, this is in order to make my analysis more relevent to the Business Objective of making a Future Investment. A concern I have is that more recent data has probably been provided since this dataset which may skew my findings.   
+
+```{r}
+# Ensure 'release_year' is numeric
+final_movies_data$release_year <- as.numeric(final_movies_data$release_year)
+
+# Define the range for the last 5 years
+last_5_years <- (max(final_movies_data$release_year) - 4):max(final_movies_data$release_year)
+
+# Filter the dataset for the last 5 years
+movies_last_5_years <- final_movies_data %>%
+  filter(release_year %in% last_5_years)
+
+# Verify the filtered dataset
+print(head(movies_last_5_years))
+```
+
+## Most Films Per Year by Director
+
+```{r}
+
+# Creating a new data table named top directors by each year 
+most_films_directors <- movies_last_5_years %>% 
+  filter(!is.na(release_year) & !is.na(director)) %>%
+  group_by(release_year, director) %>%
+  summarise(count = n()) %>%
+  arrange(release_year, desc(count)) %>%
+  slice(1) %>%
+  ungroup()
+
+# Verify the top directors by year
+print(most_films_directors)
+```
+
+
+
+```{r}
+
+# Plot the top directors by year
+ggplot(most_films_directors, aes(x = release_year, y = count, fill = director)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Top Director by Year (last 5 years)",
+       x = "Year",
+       y = "Number of Movies",
+       fill = "Director") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+This Shows the most active directors over the last 5 years, this helps us see what directors take on the most work, this could help us derterime a directors potential availability and willingness to explore a new project.  
+
+
+## Most Profitable Director's in the last 5 years
+
+```{r}
+
+# Group by year and director, then summarize profit
+top_profitable_directors <- movies_last_5_years %>%
+  filter(!is.na(release_year) & !is.na(profit)) %>%
+  group_by(release_year, director) %>%
+  summarise(total_profit = sum(profit, na.rm = TRUE)) %>%
+  arrange(release_year, desc(total_profit)) %>%
+  slice(1) %>%
+  ungroup()
+
+# Verify the top profitable directors by year
+print(top_profitable_directors)
+
+# Verify the top profitable directors by year
+print(top_profitable_directors)
+```
+
+```{r}
+
+# Plot the most profitable directors for the last 5 years
+ggplot(top_profitable_directors, aes(x = release_year, y = total_profit, fill = director)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Most Profitable Directors by Year (Last 5 Years)",
+       x = "Year",
+       y = "Total Profit",
+       fill = "Director") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+As you can see data is only available for the first 2 years 2016-2017 therefore not much of a conclusion can be derived from this
+
+
+## Highest Rating by Director
+
+```{r}
+
+# Group by year and director, then summarize rating
+top_rated_directors <- movies_last_5_years %>% 
+  filter(!is.na(release_year) & !is.na(weighted_rating)) %>%
+  group_by(release_year, director) %>%
+  summarise(average_rating = mean(weighted_rating, na.rm = TRUE)) %>%
+  arrange(release_year, desc(average_rating)) %>%
+  slice(1) %>%
+  ungroup()
+
+# Verify the top-rated directors by year
+print(top_rated_directors)
+```
+
+```{r}
+
+# Plot the top-rated directors by year
+ggplot(top_rated_directors, aes(x = release_year, y = average_rating, fill = director)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Top-Rated Directors by Year (last 5 years)",
+       x = "Year",
+       y = "Average Rating",
+       fill = "Director") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+This Shows the best rated directors, each year over the last 5 years, this gives us an indication of what director we could hire that would be able to create a film that would be well recieved by the audience.
+
+## Films by Genre over the Last 5 years
+
+```{r}
+# Separate combined genres
+genre_separated_last_5 <- movies_last_5_years %>%
+  separate_rows(genres, sep = "; ")
+
+# Verify the separated genres
+print(head(genre_separated_last_5))
+```
+
+
+```{r}
+
+# Count the occurrences of each genre
+genre_counts_last_5 <- genre_separated_last_5 %>%
+  count(genres, sort = TRUE)
+
+# Verify the genre counts
+print(genre_counts_last_5)
+
+
+# Filter to the top genres
+top_genres_last_5 <- genre_counts_last_5 %>%
+  top_n(10, n) %>%
+  arrange(desc(n))
+
+# Plot the top genres
+ggplot(top_genres_last_5, aes(x = reorder(genres, n), y = n)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top Genres in the Last 5 Years",
+       x = "Genres",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+As you can see Drama and Comedy Top the chart meaning these movies are the most prevalent over the last 5 years
+
+## Genres by Director over the Last 5 years
+
+```{r}
+
+# Group by genres and director, then count
+genre_director_counts_last_5 <- genre_separated_last_5 %>%
+  group_by(genres, director) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  arrange(genres, desc(count)) %>%
+  group_by(genres) %>%
+  slice_max(count, n = 1) %>%
+  ungroup()
+
+genre_director_counts_last_5 <- genre_director_counts_last_5 %>%
+  filter(!is.na(director) & !is.na(genres))
+
+# Verify the genre-director counts
+print(head(genre_director_counts_last_5))
+
+```
+
+```{r}
+
+# Plot the top directors for each genre
+ggplot(genre_director_counts_last_5, aes(x = reorder(director, count), y = count, fill = director)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  facet_wrap(~ genres, scales = "free") +
+  labs(title = "Top Directors by Genre (Last 5 Years)",
+       x = "Director",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none") +
+  coord_flip()
+```
+
+This gives us an indication of who we should hire to Direct our movie based on genre as certain Directors will be more specialised towards a certain Genre
+
+
+## Genre by Profit over the last 5 years
+
+
+```{r}
+# Group by genres and summarize the total profit
+genre_profit_last_5 <- genre_separated_last_5 %>%
+  group_by(genres) %>%
+  summarise(total_profit = sum(profit, na.rm = TRUE)) %>%
+  arrange(desc(total_profit))
+
+genre_profit_last_5 <- genre_profit_last_5 %>%
+  filter(!is.na(genres) & !is.na(total_profit))
+
+# Verify the genre profit
+print(genre_profit_last_5)
+```
+
+
+```{r}
+
+# Plot the most profitable genres
+ggplot(genre_profit_last_5, aes(x = reorder(genres, total_profit), y = total_profit)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Most Profitable Genres in the Last 5 Years",
+       x = "Genres",
+       y = "Total Profit") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+
+Adventure tops the chart with Action and Comedy films also showing they make a good amount of profit. 
+
+
+## Genre Popularity over the last 5 years
+
+
+```{r}
+# Group by genres and summarize the average popularity
+genre_popularity_last_5 <- genre_separated_last_5 %>%
+  group_by(genres) %>%
+  summarise(average_popularity = mean(popularity, na.rm = TRUE)) %>%
+  arrange(desc(average_popularity))
+
+# Verify the genre popularity
+print(genre_popularity_last_5)
+```
+
+```{r}
+# Plot the most popular genres
+ggplot(genre_popularity_last_5, aes(x = reorder(genres, average_popularity), y = average_popularity)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Most Popular Genres in the Last 5 Years",
+       x = "Genres",
+       y = "Average Popularity") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_flip()
+```
+
+Adventure and Action are high which would be expected based on the last chart, however it is surprising to see Comedy quite low down based on popularity. 
+
+# Conclusion 
+
+*Adventure* and *Action* films seem to be well received by the Public and draw a substantial amount of profit. 
+
+*Comedy* films draw a high amount of profit but the quantity of films made in this genre is high which could be a driving factor in this, as the *Popularity* of *Comedy* films from the public over the last 5 years is actually low compared to other high profit genres.
+
+*Science Fiction* and *Adventure* films despite being the lowest in terms of quantity being made seem to be the most profitable, these films seem to be niche films with a high fandom as both these films seem to have high Popularity among the other genres.   
+
+# Recommendations
+
+I suggest the Investment Agency start a Film Project with the Emphasis being on *Action*/*Science Fiction* with the director being either *Neill Blomkamp* or *Jay Oliva* as these two directors are familar with this type of genre. 
+
+
+# Next Steps
+
+I will be Creating Visualisations and a Dashboard of the 3 Datasets I created earlier from the full dataset. 
+
+- Top Profitable Movies
+- Top Rated Movies
+- Top Popular Movies
+
+
+Top
